@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "id": "1000",
+      "email": "test@bundestag.de",
+      "name": "Kevin Petzold",
+      "password": "$2b$12$aTV6HYOKE3bKuWiLEq9Ahunn/OLCyXyKZO8qMxoHkwqExbPaKY0yS",
+      "budgetId": "101010",
+      "createdAt": "2025-07-09T14:30:03.367Z"
+    }
+  ],
+  "invoices": [],
+  "invoiceCounters": {
+    "101010-2025": 9
+  }
+}
