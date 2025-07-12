@@ -2,7 +2,8 @@
 import express from 'express';
 import { generatePDF } from '../services/pdfService.js';
 import { db } from '../data/db.js';
-//import nodemailer from 'nodemailer';
+import fs from 'fs/promises';
+import path from 'path';
 
 const router = express.Router();
 
@@ -60,26 +61,18 @@ router.post('/', async (req, res) => {
       }
     });
 
-    // 5) PDF per E-Mail versenden
- /*   const transporter = nodemailer.createTransport({
-      sendmail: true,
-      newline: 'unix',
-      path: '/usr/sbin/sendmail'
-    });
 
-    await transporter.sendMail({
-      from: 'noreply@example.com',
-      to: email,
-      subject: `Ihre Rechnung ${invoiceNumber}`,
-      text: 'Anbei Ihre zusammengestellte Rechnung im PDF-Format.',
-      attachments: [
-        {
-          filename: `rechnung_${invoiceNumber}.pdf`,
-          path: pdfRelPath
+  // === TEMP-Dateien nach PDF-Erstellung löschen ===
+    for (const filePath of images) {
+      if (filePath.startsWith('uploads/')) {
+        try {
+          await fs.unlink(path.join(process.cwd(), filePath));
+        } catch (err) {
+          console.warn(`Konnte temporäre Datei nicht löschen: ${filePath}:`, err.message);
         }
-      ]
-    });
-*/
+      }
+    }
+
     return res.json({ pdfPath: pdfRelPath, invoice: invoiceNumber });
   } catch (err) {
     console.error('Send error:', err);

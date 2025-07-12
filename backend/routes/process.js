@@ -1,6 +1,9 @@
 // /backend/routes/process.js
 import express from 'express';
-import { performOCR } from '../services/ocrService.js';
+import Tesseract from 'tesseract.js';
+import path from 'path';
+
+const tessdataPath = path.resolve(process.cwd(), 'tessdata');
 
 const retry = async (fn, retries = 3, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
@@ -24,6 +27,7 @@ router.post('/', async (req, res) => {
   try {
     // performOCR() fängt interne Fehler bereits ab und liefert '' zurück, wenn's schiefgeht.
     const text = await retry(() => performOCR(filePath));
+    
     // Wir können optional einen Hinweis mitliefern, wenn text leer ist.
     if (!text) {
       return res.json({
@@ -45,3 +49,29 @@ router.post('/', async (req, res) => {
 
 export default router;
 
+async function performOCR(filePath) {
+  const imagePath = path.resolve(process.cwd(), filePath);
+
+  try {
+    const {
+      data: { text },
+    } = await Tesseract.recognize(
+      imagePath,
+      'deu',
+      {
+        // Hinweis: Achte darauf, dass `tessdata`-Ordner mit den .traineddata-Dateien existiert.
+        // Wenn nicht, kann man hier auch `langPath` weglassen, sodass Tesseract die Daten
+        // automatisch aus dem CDN lädt (langs werden dann heruntergeladen).
+        // Z. B.:
+        // langPath:  tessdataPath,
+        // cachePath: tessdataPath,
+        // gzip:      false,
+      }
+    );
+    return text || '';
+  } catch (err) {
+    console.error('❌ performOCR Error:', err);
+    // Gib zumindest einen leeren String zurück, damit die Route nicht auf 500 fällt.
+    return '';
+  }
+}

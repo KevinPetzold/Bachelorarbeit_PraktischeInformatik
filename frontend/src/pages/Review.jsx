@@ -20,6 +20,9 @@ export default function Review() {
   const [errorPages, setErrorPages]       = useState([]);
   const [ratios, setRatios]               = useState([]);
 
+  const isPdf = (fp) => fp.toLowerCase().endsWith('.pdf');
+
+
   useEffect(() => {
     if (filePaths.length === 0) {
       setErrorAll('Keine Seiten übergeben.');
@@ -32,6 +35,10 @@ export default function Review() {
         // 1) OCR für jede Seite (mit Retry + Offline-Prüfung)
         const texts = [];
         for (let i = 0; i < filePaths.length; i++) {
+          if (isPdf(filePaths[i])) {
+        texts.push('(PDF - kein OCR)');
+        continue; // Überspringe OCR!
+      }
           if (!navigator.onLine) {
             throw new Error('Offline: Verbindung prüfen');
           }
@@ -50,16 +57,18 @@ export default function Review() {
         setErrorPages(texts.map(() => ''));
 
         // 2) Bild-Maße laden für aspect-ratio
-        const ratioArr = await Promise.all(
-          filePaths.map(fp =>
-            new Promise(resolve => {
+    const ratioArr = await Promise.all(
+      filePaths.map(fp =>
+        isPdf(fp)
+          ? Promise.resolve(0.707) // A4: 210/297 ≈ 0.707
+          : new Promise(resolve => {
               const img = new window.Image();
               img.src = `/${fp}`;
               img.onload = () => resolve(img.naturalWidth / img.naturalHeight);
               img.onerror = () => resolve(1); // fallback
             })
-          )
-        );
+      )
+    );
         setRatios(ratioArr);
       } catch (err) {
         setErrorAll(err.message);
@@ -161,26 +170,43 @@ export default function Review() {
             <h3 className="font-semibold mb-2">Seite {idx + 1}</h3>
 
             {/* Bild-Container */}
-            <div
-              className="mb-4 border rounded mx-auto overflow-hidden"
-              style={{
-                width: '100%',
-                maxWidth: '600px',
-                aspectRatio: `${aspect}`,
-                backgroundColor: '#f9f9f9'
-              }}
-            >
-              <img
-                src={`/${fp}`}
-                alt={`Seite ${idx + 1}`}
-                className="w-full h-full object-contain"
-                style={{
-                  transform: `rotate(${rotations[idx]}deg)`,
-                  transformOrigin: 'center center',
-                  transition: 'transform 0.3s ease'
-                }}
-              />
-            </div>
+{isPdf(fp) ? (
+  // PDF Vorschau/Link
+  <div className="mb-4 flex flex-col items-center justify-center" style={{width: '100%', maxWidth: '600px', aspectRatio: '0.707', background: '#f5f5f5', borderRadius: '8px'}}>
+    <span style={{fontSize: '3em'}}>📄</span>
+    <a
+      href={`/${fp}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-700 underline mt-2"
+    >
+      PDF öffnen
+    </a>
+  </div>
+) : (
+  // Bild-Vorschau wie bisher
+  <div
+    className="mb-4 border rounded mx-auto overflow-hidden"
+    style={{
+      width: '100%',
+      maxWidth: '600px',
+      aspectRatio: `${aspect}`,
+      backgroundColor: '#f9f9f9'
+    }}
+  >
+    <img
+      src={`/${fp}`}
+      alt={`Seite ${idx + 1}`}
+      className="w-full h-full object-contain"
+      style={{
+        transform: `rotate(${rotations[idx]}deg)`,
+        transformOrigin: 'center center',
+        transition: 'transform 0.3s ease'
+      }}
+    />
+  </div>
+)}
+
 
             {/* Loading / Error für diese Seite */}
             {loadingPage[idx] && (
@@ -190,37 +216,38 @@ export default function Review() {
               <p className="text-red-600 mb-2">❌ {errorPages[idx]}</p>
             )}
 
-            {/* Controls */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Button
-                variant="secondary"
-                onClick={() => handleReloadPage(idx)}
-                disabled={loadingPage[idx]}
-              >
-                Seite neu laden
-              </Button>
-              <Button variant="secondary" onClick={() => rotateLeft(idx)}>
-                ↺ Drehen
-              </Button>
-              <Button variant="secondary" onClick={() => rotateRight(idx)}>
-                ↻ Drehen
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => handleUndo(idx)}
-                disabled={textHistories[idx].length === 0}
-              >
-                ↶ Undo
-              </Button>
-            </div>
-
-            {/* OCR-Text */}
-            <label className="font-semibold block mb-1">OCR-Text:</label>
-            <textarea
-              className="w-full h-32 p-2 border rounded"
-              value={ocrTexts[idx]}
-              onChange={e => handleTextChange(idx, e.target.value)}
-            />
+{/* Controls */}
+<div className="flex flex-wrap gap-2 mb-4">
+  {!isPdf(fp) && (
+    <>
+      <Button variant="secondary" onClick={() => handleReloadPage(idx)} disabled={loadingPage[idx]}>
+        Seite neu laden
+      </Button>
+      <Button variant="secondary" onClick={() => rotateLeft(idx)}>
+        ↺ Drehen
+      </Button>
+      <Button variant="secondary" onClick={() => rotateRight(idx)}>
+        ↻ Drehen
+      </Button>
+      <Button variant="secondary" onClick={() => handleUndo(idx)} disabled={textHistories[idx].length === 0}>
+        ↶ Undo
+      </Button>
+    </>
+  )}
+</div>
+{/* OCR-Text */}
+{isPdf(fp) ? (
+  <label className="font-semibold block mb-1 text-gray-500">Kein OCR für PDF-Dateien</label>
+) : (
+  <>
+    <label className="font-semibold block mb-1">OCR-Text:</label>
+    <textarea
+      className="w-full h-32 p-2 border rounded"
+      value={ocrTexts[idx]}
+      onChange={e => handleTextChange(idx, e.target.value)}
+    />
+  </>
+)}
           </div>
         );
       })}

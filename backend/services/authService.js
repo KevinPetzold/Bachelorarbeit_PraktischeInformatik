@@ -27,7 +27,6 @@ export function authenticateJWT(req, res, next) {
   req.user = payload;
   next();
 }
-
 /**
  * Registriert einen neuen Nutzer und speichert ihn in LowDB.
  * Erwartet im Request-Body: { email, password, name, budgetId }
@@ -46,9 +45,19 @@ export async function registerUser({ email, password, name, budgetId }) {
   // 3) Hash das Passwort
   const hashed = await bcrypt.hash(password, SALT_ROUNDS);
 
+  // Wenn noch kein User existiert, nimm Startwert
+  const nextId = USER_ID_START.toString();
+  if (users.length) { 
+  // IDs in Zahlen umwandeln (evtl. noch String)
+  const ids = users.map(u => Number(u.id)).filter(Number.isFinite);
+
+  // Max + 1, oder Startwert wenn keine gültigen IDs
+  nextId = ids.length ? Math.max(...ids) + 1 : USER_ID_START;
+  }
+
   // 4) Erstelle neues User-Objekt mit einer eindeutigen ID, Budget-ID usw.
   const newUser = {
-    id: getNextUserId(users),
+    id: nextId.toString(),
     email,
     name,
     password: hashed,
@@ -112,25 +121,11 @@ export async function loginUser({ email, password }) {
   };
 }
 
-/**
- * Verifiziert ein JWT und gibt den Payload zurück, oder null bei ungültigem Token.
- */
 export function verifyToken(token) {
   try {
     return jwt.verify(token, process.env.JWT_SECRET);
   } catch {
     return null;
   }
-}
-function getNextUserId(users) {
-  // Wenn noch kein User existiert, nimm Startwert
-  if (!users.length) return USER_ID_START.toString();
-
-  // IDs in Zahlen umwandeln (evtl. noch String)
-  const ids = users.map(u => Number(u.id)).filter(Number.isFinite);
-
-  // Max + 1, oder Startwert wenn keine gültigen IDs
-  const nextId = ids.length ? Math.max(...ids) + 1 : USER_ID_START;
-  return nextId.toString();
 }
 

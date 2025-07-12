@@ -33,6 +33,24 @@ export default function FileUploader({ onSuccess, onCancel }) {
     const f = files[0];
     if (!f) return;
 
+    if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
+          const headerOk = await checkPdfHeader(f);
+    if (!headerOk) {
+      setError('❌ Die PDF-Datei ist beschädigt oder kein gültiges PDF.');
+      return;
+    }
+    // Vorschau-URL für PDF (optional, falls du eine Vorschau machen willst)
+    const url = URL.createObjectURL(f);
+    setPhotos(prev => [...prev, { blob: f, url }]);
+    // Clean up ggf. aktuelle Bearbeitungen
+    cleanupCurrent();
+    setMode('select');
+    return;
+  }
+
+
+
+
     const isHeic = f.type === 'image/heic' || f.name.toLowerCase().endsWith('.heic');
 
     try {
@@ -73,31 +91,6 @@ export default function FileUploader({ onSuccess, onCancel }) {
     }
   };
 
-  // Upload-Helper für PDF oder andere Nicht-Bilder (selten genutzt)
-  const uploadFileDirect = async (f) => {
-    if (!navigator.onLine) {
-      setError('Offline: Bitte Verbindung prüfen.');
-      return;
-    }
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append('file', f);
-      const res = await requestWithRetry('/api/upload', {
-        method: 'POST',
-        body: form,
-      });
-      const data = await res.json();
-      if (!res.ok || !data.filePath) {
-        throw new Error(data.error || 'Upload fehlgeschlagen');
-      }
-      onSuccess([data.filePath]);
-    } catch (err) {
-      setError(`Upload fehlgeschlagen: ${err.message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
 
   // Nach Auto-Scan → Vorschau-Modus
   const handleAutoSuccess = (blob) => {
@@ -127,7 +120,13 @@ export default function FileUploader({ onSuccess, onCancel }) {
     };
     img.src = imageURL;
   };
-
+async function checkPdfHeader(file) {
+  // Lies die ersten 5 Bytes der Datei
+  const blob = file.slice(0, 5);
+  const arrBuf = await blob.arrayBuffer();
+  const header = new TextDecoder().decode(arrBuf);
+  return header === '%PDF-';
+}
   // Seite aus Vorschau zur Sammlung hinzufügen
   const handleAddToPhotos = () => {
     if (!processedBlob || !processedBlobURL) return;
@@ -169,16 +168,29 @@ export default function FileUploader({ onSuccess, onCancel }) {
 
     try {
       const uploadedPaths = [];
-      for (let i = 0; i < photos.length; i++) {
-        const { blob, url } = photos[i];
-        const compressed = await compressImage(blob, 2 * 1024 * 1024);
-        const f = new File(
-          [compressed],
-          `upload-${Date.now()}-${i}.jpg`,
-          { type: compressed.type }
-        );
-        const form = new FormData();
-        form.append('file', f);
+for (let i = 0; i < photos.length; i++) {
+  const { blob, url } = photos[i];
+
+  let uploadFile;
+  let fileName;
+
+  if (blob.type === 'application/pdf') {
+    // PDF wird nicht komprimiert und behält Namen & Typ
+    uploadFile = blob;
+    fileName = blob.name || `upload-${Date.now()}-${i}.pdf`;
+  } else {
+    // Bilder werden komprimiert
+    const compressed = await compressImage(blob, 2 * 1024 * 1024);
+    uploadFile = new File(
+      [compressed],
+      `upload-${Date.now()}-${i}.jpg`,
+      { type: compressed.type }
+    );
+    fileName = uploadFile.name;
+  }
+
+  const form = new FormData();
+  form.append('file', uploadFile, fileName);
 
         const res = await requestWithRetry('/api/upload', {
           method: 'POST',
@@ -227,7 +239,7 @@ export default function FileUploader({ onSuccess, onCancel }) {
           {error && <p className="text-red-600 mb-2 whitespace-pre-line">❌ {error}</p>}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/*,.pdf"
+            accept="image/jpeg,image/png,image/*,application/pdf"
             multiple
             onChange={handleChange}
             disabled={uploading}

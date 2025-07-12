@@ -1,85 +1,109 @@
-// /backend/services/pdfService.js
-import PDFDocument from 'pdfkit';
-import fs from 'fs';
+import fs from 'fs/promises';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import path from 'path';
 
-export const generatePDF = ({ images, texts = [], metadata = {} }) => {
-  return new Promise((resolve, reject) => {
-    try {
-      // === 1) Output-Verzeichnis sicherstellen ===
-      const outputDir = path.join(process.cwd(), 'output');
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
+// images = Array von Dateipfaden (JPEG/PNG oder PDF)
+// texts = OCR-Texte (Array, leere Felder/Kein OCR für PDFs okay)
+// metadata = deine Metadaten (optional)
 
-      // === 2) Dateinamen generieren anhand Metadaten ===
-      const filename = `${metadata.budgetId}_${metadata.invoiceNumber}_${metadata.calendarYear}_${metadata.userId}.pdf`;
-      const outputPath = path.join(outputDir, filename);
+export async function generatePDF({ images, texts = [], metadata = {} }) {
+  // 1. Neues, leeres PDF erzeugen
+  const mergedPdf = await PDFDocument.create();
 
-      // === 3) PDFKit-Dokument anlegen, Seite für Seite ===
-      const doc = new PDFDocument({ autoFirstPage: false });
-      // PDF-Metadata setzen
-      doc.info.Title = `Rechnung ${metadata.invoiceNumber}`;
-      doc.info.Author = `User ${metadata.userId}`;
-      doc.info.Subject = `Budget ${metadata.budgetId} (${metadata.year})`;
-      doc.info.Keywords = `BudgetID:${metadata.budgetId},Nummer:${metadata.invoiceNumber},Year:${metadata.calendarYear},UserID:${metadata.userId}`;
+  for (let i = 0; i < images.length; i++) {
+    const filePath = images[i];
+    const ext = path.extname(filePath).toLowerCase();
 
-      // Optional: Verschlüsselung aktivieren (sofern PDFKit-Version unterstützt)
-      if (process.env.PDF_ENCRYPTION === 'true') {
-        doc.encrypt({
-          userPassword: metadata.userId,
-          ownerPassword: process.env.PDF_OWNER_PASSWORD,
-          userProtectionFlag: 4 // z.B. Nur Lesen erlaubt
+    if (ext === '.pdf') {
+      // === PDF: Alle Seiten übernehmen ===
+      const pdfBytes = await fs.readFile(filePath);
+      const srcPdf = await PDFDocument.load(pdfBytes);
+      const srcPages = await mergedPdf.copyPages(srcPdf, srcPdf.getPageIndices());
+      srcPages.forEach(p => mergedPdf.addPage(p));
+      // Optional: Du könntest hier ein Wasserzeichen oder einen Hinweis hinzufügen
+    } else {
+const A4_WIDTH = 595;
+const A4_HEIGHT = 842;
+
+const imgBytes = await fs.readFile(filePath);
+let imgEmbed, dims;
+if (ext === '.jpg' || ext === '.jpeg') {
+  imgEmbed = await mergedPdf.embedJpg(imgBytes);
+  dims = imgEmbed.scale(1);
+} else if (ext === '.png') {
+  imgEmbed = await mergedPdf.embedPng(imgBytes);
+  dims = imgEmbed.scale(1);
+} else {
+  throw new Error(`Nicht unterstütztes Bildformat: ${filePath}`);
+}
+
+// Berechne das Verhältnis, damit das Bild in A4 passt, ohne gestreckt zu werden:
+const scale = Math.min(
+  A4_WIDTH / dims.width,
+  A4_HEIGHT / dims.height,
+  1 // Nicht hochskalieren!
+);
+
+const scaledWidth = dims.width * scale;
+const scaledHeight = dims.height * scale;
+
+// Zentriere das Bild auf der A4-Seite:
+const x = (A4_WIDTH - scaledWidth) / 2;
+const y = (A4_HEIGHT - scaledHeight) / 2;
+
+// Füge eine A4-Seite hinzu:
+const page = mergedPdf.addPage([A4_WIDTH, A4_HEIGHT]);
+
+page.drawImage(imgEmbed, {
+  x,
+  y,
+  width: scaledWidth,
+  height: scaledHeight,
+});
+
+      // === Unsichtbaren OCR-Text drauflegen (falls vorhanden und sinnvoll) ===
+      const text = texts[i];
+      if (text && !/kein\s*ocr/i.test(text)) {
+        // Unsichtbarer Text – für Suchbarkeit
+        const font = await mergedPdf.embedFont(StandardFonts.Helvetica);
+        page.drawText(text, {
+          x: 5, y: dims.height - 20, // Start irgendwo im Bild (nur grob!)
+          size: 10,
+          color: rgb(0, 0, 0),
+          opacity: 0, // unsichtbar
+          font,
+          maxWidth: dims.width - 10,
         });
       }
-
-      const stream = fs.createWriteStream(outputPath);
-      doc.pipe(stream);
-
-      // === 4) Jede Seite: Bild + Transparenter OCR-Text ===
-      images.forEach((imageRelPath, idx) => {
-        const fullImagePath = path.join(process.cwd(), imageRelPath);
-        if (!fs.existsSync(fullImagePath)) {
-          throw new Error(`Image not found: ${imageRelPath}`);
-        }
-        // Seite in Bildgröße
-        const imgObj = doc.openImage(fullImagePath);
-        const pageOpts = { size: [imgObj.width, imgObj.height], margin: 0 };
-        doc.addPage(pageOpts);
-        // 4.1) Bild rendern
-        doc.image(fullImagePath, 0, 0, { width: imgObj.width, height: imgObj.height });
-        // 4.2) Unsichtbaren OCR-Text darüberlegen
-        const text = texts[idx];
-        doc.font('Helvetica').fontSize(10);
-        doc.fillColor('black', 0); // 0 = komplett transparent
-        // Schreibe den gesamten Text in einem großen Textfeld, das das Bild abdeckt
-        doc.text(text, 0, 0, {
-          width: imgObj.width,
-          height: imgObj.height,
-          lineBreak: false,
-          ellipsis: false,
-        });
-        // Danach wieder „sichtbar“ setzen, falls später etwas sichtbar benötigt wird:
-        doc.fillColor('black', 1);
-      });
-
-      // === 5) (Optional) Noch eine Übersichtsseite hintendran ===
-      if (metadata.appendSummaryPage) {
-        doc.addPage({ size: 'A4', margin: 40 });
-        doc.fontSize(14).fillColor('black').text('Rechnungsübersicht', { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(12).text(`Budget ID: ${metadata.budgetId}`);
-        doc.text(`Rechnungs-Nr.: ${metadata.invoiceNumber}`);
-        doc.text(`Jahr: ${metadata.year}`);
-        doc.text(`User: ${metadata.userId}`);
-      }
-
-      // === 6) PDF beenden und Pfad zurückliefern ===
-      doc.end();
-      stream.on('finish', () => resolve(`output/${filename}`));
-      stream.on('error', err => reject(err));
-    } catch (err) {
-      reject(err);
     }
-  });
-};
+  }
+
+  // Optional: Metadaten setzen
+  if (metadata) {
+    mergedPdf.setTitle(`Rechnung ${metadata.invoiceNumber || ''}`);
+    mergedPdf.setSubject(`Budget: ${metadata.budgetId || ''} (${metadata.year || ''})`);
+    mergedPdf.setKeywords([metadata.budgetId, metadata.invoiceNumber, metadata.userId].filter(Boolean));
+    mergedPdf.setAuthor(`NutzerID: ${metadata.userId || ''}`);
+  }
+
+  // Optional: Übersicht hinten anhängen
+  if (metadata.appendSummaryPage) {
+    const page = mergedPdf.addPage([595, 842]); // A4
+    const font = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
+    page.drawText('Rechnungsübersicht', { x: 70, y: 790, size: 20, font, color: rgb(0.1,0.1,0.1) });
+    page.drawText(`Budget ID: ${metadata.budgetId || ''}`, { x: 70, y: 770, size: 14 });
+    page.drawText(`Rechnungs-Nr.: ${metadata.invoiceNumber || ''}`, { x: 70, y: 750, size: 14 });
+    page.drawText(`Jahr: ${metadata.year || ''}`, { x: 70, y: 730, size: 14 });
+    page.drawText(`User: ${metadata.userId || ''}`, { x: 70, y: 710, size: 14 });
+  }
+
+  // 2. PDF abspeichern
+  const outputDir = path.join(process.cwd(), 'output');
+  await fs.mkdir(outputDir, { recursive: true });
+  const filename = `${metadata.budgetId}_${metadata.invoiceNumber}_${metadata.calendarYear}_${metadata.userId}.pdf`;
+  const outputPath = path.join(outputDir, filename);
+  const pdfBytes = await mergedPdf.save();
+  await fs.writeFile(outputPath, pdfBytes);
+
+  return `output/${filename}`;
+}
