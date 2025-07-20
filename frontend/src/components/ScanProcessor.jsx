@@ -9,6 +9,8 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
   const MIN_WIDTH = 600;
   const MIN_HEIGHT = 800;
   const BLUR_THRESHOLD = 100;
+  const MIN_BRIGHTNESS = 40;
+  const MAX_BRIGHTNESS = 215;
 
   // 1) Handler für Nachrichten vom Worker
   const onWorkerMessage = useCallback(
@@ -93,6 +95,8 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
         minWidth: MIN_WIDTH,
         minHeight: MIN_HEIGHT,
         blurThreshold: BLUR_THRESHOLD,
+        minBrightness: MIN_BRIGHTNESS,
+        maxBrightness: MAX_BRIGHTNESS,
       });
     };
     img.onerror = () => {
@@ -168,15 +172,33 @@ const opencvWorkerCode = `
   };
 
   async function processMessage(data) {
-    const { imageData, width, height, minWidth, minHeight, blurThreshold } = data;
+    const { imageData, width, height, minWidth, minHeight, blurThreshold, minBrightness, maxBrightness } = data;
     try {
       if (width < minWidth || height < minHeight) {
         throw new Error(\`Bildauflösung zu niedrig: benötigt \${minWidth}×\${minHeight}, hast \${width}×\${height}\`);
       }
 
-      // Schärfetest
+
       let srcMatBlurTest = new cv.Mat(height, width, cv.CV_8UC4);
       srcMatBlurTest.data.set(imageData.data);
+
+      // Helligkeitstest
+      let grayForBrightness = new cv.Mat();
+      cv.cvtColor(srcMatBlurTest, grayForBrightness, cv.COLOR_RGBA2GRAY);
+      let meanStdDevBrightness = new cv.Mat();
+      let stdDevBrightness = new cv.Mat();
+      cv.meanStdDev(grayForBrightness, meanStdDevBrightness, stdDevBrightness);
+      const meanBrightness = meanStdDevBrightness.doubleAt(0, 0);
+      grayForBrightness.delete();
+      meanStdDevBrightness.delete();
+      stdDevBrightness.delete();
+
+      if (meanBrightness < minBrightness)
+        throw new Error('Das Bild ist zu dunkel. Bitte erneut fotografieren.');
+      if (meanBrightness > maxBrightness)
+        throw new Error('Das Bild ist zu hell. Bitte erneut fotografieren.');
+
+      // Schärfetest
       let grayBlur = new cv.Mat();
       cv.cvtColor(srcMatBlurTest, grayBlur, cv.COLOR_RGBA2GRAY);
       let laplacian = new cv.Mat();

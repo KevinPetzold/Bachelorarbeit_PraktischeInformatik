@@ -15,7 +15,6 @@ export default function Send() {
 
   const { user } = useContext(AuthContext); 
 
-  const [email, setEmail]   = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
   const [status, setStatus] = useState('idle'); // idle | sending | success | error
   const [error, setError]   = useState('');
@@ -32,10 +31,6 @@ export default function Send() {
   }
 
   const handleSend = async () => {
-    if (!email) {
-      setError('Bitte geben Sie eine E-Mail ein.');
-      return;
-    }
     setStatus('sending');
     setError('');
     const token = localStorage.getItem('token');
@@ -46,7 +41,7 @@ export default function Send() {
         headers: { 
           'Content-Type': 'application/json',          // ← HIER den Header ergänzen
           Authorization: `Bearer ${token}`,},
-        body: JSON.stringify({ images: filePaths, texts: ocrTexts, email }),
+        body: JSON.stringify({ images: filePaths, texts: ocrTexts }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Fehler beim Erzeugen des PDFs');
@@ -115,17 +110,7 @@ export default function Send() {
 
       {status === 'idle' && (
         <>
-          <div className="mb-4">
-            <label className="font-semibold block mb-1">Empfänger-E-Mail:</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="beispiel@domain.de"
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <Button onClick={handleSend} disabled={!email}>
+          <Button onClick={handleSend}>
             PDF erzeugen & versenden ✉️
           </Button>
           {error && <p className="text-red-600 mt-2">{error}</p>}

@@ -9,13 +9,12 @@ const router = express.Router();
 
 // Diese Route liegt hinter authenticateJWT, daher steht req.user
 router.post('/', async (req, res) => {
-  const { images, texts, email } = req.body;
+  const { images, texts } = req.body;
 
   // 1) Validierung
   if (
     !Array.isArray(images) || images.length === 0 ||
-    !Array.isArray(texts)  || texts.length !== images.length ||
-    !email
+    !Array.isArray(texts)  || texts.length !== images.length
   ) {
     return res.status(400).json({ error: 'Missing or invalid data.' });
   }

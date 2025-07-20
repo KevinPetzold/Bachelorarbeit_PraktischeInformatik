@@ -325,7 +325,7 @@ setInitialCorners([
               ➕ Dieses Foto zur Sammlung hinzufügen
             </Button>
             <Button variant="secondary" onClick={startManualAfterAuto}>
-              ✏️ Manuell anpassen
+              ✏️ Manuell Kanten anpassen
             </Button>
             <Button variant="secondary" onClick={handleRetakeOrManual}>
               ↺ Neu scannen

@@ -32,7 +32,10 @@ export default function FileUploader({ onSuccess, onCancel }) {
     // Wir nehmen zunächst nur das erste Bild (wie Kamera-Flow)
     const f = files[0];
     if (!f) return;
-
+    if (f.size > 10 * 1024 * 1024) {
+      setError('❌ Die Datei ist zu groß (max. 10 MB erlaubt).');
+      return;
+    }
     if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
           const headerOk = await checkPdfHeader(f);
     if (!headerOk) {
@@ -215,10 +218,31 @@ for (let i = 0; i < photos.length; i++) {
   };
 
   // Neu scannen / alles zurücksetzen
-  const handleRetakeOrManual = () => {
+  const handleRetake = () => {
     cleanupCurrent();
     setMode('select');
   };
+
+const handleSwitchToManual = () => {
+  if (!imageURL) return;
+  // Manuelle Kantenanpassung soll auf Basis des aktuellen Bilds erfolgen!
+  const img = new window.Image();
+  img.onload = () => {
+    const insetX = img.width * 0.1;
+    const insetY = img.height * 0.1;
+    setInitialCorners([
+      { x: insetX, y: insetY },
+      { x: img.width - insetX, y: insetY },
+      { x: img.width - insetX, y: img.height - insetY },
+      { x: insetX, y: img.height - insetY }
+    ]);
+    hasProcessedRef.current = false;
+    setMode('manual');
+  };
+  img.src = imageURL;
+};
+
+
 
   // Manueller Zuschnitt bestätigt → Seite zur Sammlung hinzufügen
   const handleManualConfirm = (blob) => {
@@ -298,7 +322,7 @@ for (let i = 0; i < photos.length; i++) {
           <div className="mt-4 flex gap-2">
             <Button
               variant="secondary"
-              onClick={handleRetakeOrManual}
+              onClick={handleRetake}
               disabled={uploading}
             >
               Abbrechen
@@ -323,9 +347,12 @@ for (let i = 0; i < photos.length; i++) {
             <Button onClick={handleAddToPhotos} disabled={uploading}>
               ➕ Seite zur Sammlung hinzufügen
             </Button>
-            <Button variant="secondary" onClick={handleRetakeOrManual} disabled={uploading}>
-              ↺ Neu scannen / manueller Modus
-            </Button>
+  <Button variant="secondary" onClick={handleSwitchToManual} disabled={uploading}>
+    ✏️ Manuell Kanten anpassen
+  </Button>
+  <Button variant="secondary" onClick={handleRetake} disabled={uploading}>
+    ❌ Verwerfen
+  </Button>
           </div>
         </div>
       );
@@ -340,7 +367,7 @@ for (let i = 0; i < photos.length; i++) {
               src={imageURL}
               initialCorners={initialCorners}
               onConfirm={handleManualConfirm}
-              onCancel={handleRetakeOrManual}
+              onCancel={handleRetake}
             />
           ) : (
             <p>Warte auf Bild und Eckpunkte…</p>
