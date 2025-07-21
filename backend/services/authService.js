@@ -33,16 +33,16 @@ export function authenticateJWT(req, res, next) {
  * Gibt zurück: { id, email, name, budgetId }
  */
 export async function registerUser({ email, password, name, budgetId }) {
-  // 1) Lade die Datenbank (db.data wird initialisiert, falls noch leer)
+  // Lade die Datenbank (db.data wird initialisiert, falls noch leer)
   await db.read();
 
-  // 2) Prüfe, ob die Email bereits existiert
+  // Prüfe, ob die Email bereits existiert
   const users = db.data.users;
   if (users.find((u) => u.email === email)) {
     throw new Error('Email bereits registriert.');
   }
 
-  // 3) Hash das Passwort
+  // Hash das Passwort
   const hashed = await bcrypt.hash(password, SALT_ROUNDS);
 
   // Wenn noch kein User existiert, nimm Startwert
@@ -55,7 +55,7 @@ export async function registerUser({ email, password, name, budgetId }) {
   nextId = ids.length ? Math.max(...ids) + 1 : USER_ID_START;
   }
 
-  // 4) Erstelle neues User-Objekt mit einer eindeutigen ID, Budget-ID usw.
+  // Erstelle neues User-Objekt mit einer eindeutigen ID, Budget-ID usw.
   const newUser = {
     id: nextId.toString(),
     email,
@@ -65,11 +65,11 @@ export async function registerUser({ email, password, name, budgetId }) {
     createdAt: new Date().toISOString()
   };
 
-  // 5) Füge den neuen Nutzer in die users-Collection hinzu und speichere
+  // Füge den neuen Nutzer in die users-Collection hinzu und speichere
   users.push(newUser);
   await db.write();
 
-  // 6) Gib nur öffentliche Felder zurück
+  // Gib nur öffentliche Felder zurück
   return {
     id: newUser.id,
     email: newUser.email,
@@ -96,7 +96,7 @@ export async function loginUser({ email, password }) {
     throw new Error('Ungültige Anmeldedaten.');
   }
 
-  // 1) Erstelle Payload für JWT (inkl. Budget-ID)
+  // Erstelle Payload für JWT (inkl. Budget-ID)
   const payload = {
     sub: user.id,
     email: user.email,
@@ -104,12 +104,12 @@ export async function loginUser({ email, password }) {
     budgetId: user.budgetId
   };
 
-  // 2) Signiere den Token mit dem Secret
+  // Signiere den Token mit dem Secret
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '1h'
   });
 
-  // 3) Gib Token und Basisdaten des Users zurück
+  // Gib Token und Basisdaten des Users zurück
   return {
     token,
     user: {
