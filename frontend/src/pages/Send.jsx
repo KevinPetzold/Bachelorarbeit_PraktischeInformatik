@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-//import { PdfPreview } from '../components/PdfPreview';
 import { AuthContext } from '../components/AuthContext';
 
 export default function Send() {
@@ -39,7 +38,7 @@ export default function Send() {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',          // ← HIER den Header ergänzen
+          'Content-Type': 'application/json', 
           Authorization: `Bearer ${token}`,},
         body: JSON.stringify({ images: filePaths, texts: ocrTexts }),
       });
@@ -50,7 +49,6 @@ export default function Send() {
       setPdfUrl(url);
       setStatus('success');
 
-  // PDF als Blob laden und dann zwischenspeichern, damit Download-Attribut greift
   try {
     const pdfResp = await fetch(url, { credentials: 'include' });
     if (!pdfResp.ok) throw new Error('Download fehlgeschlagen');
