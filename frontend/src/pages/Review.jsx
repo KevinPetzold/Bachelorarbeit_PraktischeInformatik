@@ -32,12 +32,12 @@ export default function Review() {
 
     (async () => {
       try {
-        // 1) OCR für jede Seite (mit Retry + Offline-Prüfung)
+        // OCR für jede Seite (mit Retry + Offline-Prüfung)
         const texts = [];
         for (let i = 0; i < filePaths.length; i++) {
           if (isPdf(filePaths[i])) {
         texts.push('(PDF - kein OCR)');
-        continue; // Überspringe OCR!
+        continue; // Überspringe OCR
       }
           if (!navigator.onLine) {
             throw new Error('Offline: Verbindung prüfen');
@@ -56,7 +56,7 @@ export default function Review() {
         setLoadingPage(texts.map(() => false));
         setErrorPages(texts.map(() => ''));
 
-        // 2) Bild-Maße laden für aspect-ratio
+        // Bild-Maße laden für aspect-ratio
     const ratioArr = await Promise.all(
       filePaths.map(fp =>
         isPdf(fp)
@@ -161,7 +161,7 @@ export default function Review() {
       <h2 className="text-xl font-bold">📄 Seiten prüfen</h2>
 
       {filePaths.map((fp, idx) => {
-        // dynamische aspect-ratio: je nach Rotation drehen wir das Verhältnis um
+        // dynamische aspect-ratio: je nach Rotation dreht  das Verhältnis um
         const ratio = ratios[idx] || 1;
         const aspect = rotations[idx] % 180 === 0 ? ratio : 1 / ratio;
 
@@ -184,7 +184,7 @@ export default function Review() {
     </a>
   </div>
 ) : (
-  // Bild-Vorschau wie bisher
+  // Bild-Vorschau
   <div
     className="mb-4 border rounded mx-auto overflow-hidden"
     style={{
