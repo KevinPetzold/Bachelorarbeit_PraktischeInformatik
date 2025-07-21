@@ -29,7 +29,6 @@ export default function FileUploader({ onSuccess, onCancel }) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Wir nehmen zunächst nur das erste Bild (wie Kamera-Flow)
     const f = files[0];
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) {
@@ -42,10 +41,8 @@ export default function FileUploader({ onSuccess, onCancel }) {
       setError('❌ Die PDF-Datei ist beschädigt oder kein gültiges PDF.');
       return;
     }
-    // Vorschau-URL für PDF (optional, falls du eine Vorschau machen willst)
     const url = URL.createObjectURL(f);
     setPhotos(prev => [...prev, { blob: f, url }]);
-    // Clean up ggf. aktuelle Bearbeitungen
     cleanupCurrent();
     setMode('select');
     return;
@@ -55,7 +52,6 @@ export default function FileUploader({ onSuccess, onCancel }) {
 
 
     const isHeic = f.type === 'image/heic' || f.name.toLowerCase().endsWith('.heic');
-
     try {
       let imageBlob = f;
 
@@ -225,7 +221,6 @@ for (let i = 0; i < photos.length; i++) {
 
 const handleSwitchToManual = () => {
   if (!imageURL) return;
-  // Manuelle Kantenanpassung soll auf Basis des aktuellen Bilds erfolgen!
   const img = new window.Image();
   img.onload = () => {
     const insetX = img.width * 0.1;
