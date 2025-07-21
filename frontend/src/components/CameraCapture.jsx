@@ -11,21 +11,21 @@ export default function CameraCapture({ onSuccess, onCancel }) {
   const navigate = useNavigate();
   const videoRef = useRef(null);
 
-  // 1) Object-URL des Live-Frames
+  // Object-URL des Live-Frames
   const [imgSrc, setImgSrc] = useState('');
 
-  // 2) Blob + URL nach erfolgreicher Kantenerkennung
+  // Blob + URL nach erfolgreicher Kantenerkennung
   const [processedBlob, setProcessedBlob] = useState(null);
   const [processedBlobURL, setProcessedBlobURL] = useState('');
 
-  // 3) Eckpunkte für manuellen Zuschnitt
+  // Eckpunkte für manuellen Zuschnitt
   const [initialCorners, setInitialCorners] = useState(null);
 
-  // 4) Gesammelte Seiten
+  // Gesammelte Seiten
   const [photos, setPhotos] = useState([]); 
   //    jedes Element: { blob: Blob, url: string }
 
-  // 5) Modus‐State
+  // Modus‐State
   // 'preview'           → Live‐Kamera  
   // 'auto'              → ScanProcessor  
   // 'previewProcessed'  → Vorschau des zugeschnittenen Bildes  
@@ -33,15 +33,13 @@ export default function CameraCapture({ onSuccess, onCancel }) {
   // 'uploadingAll'      → Hochladen aller gesammelten Seiten  
   const [mode, setMode] = useState('preview');
 
-  // 6) Fehlermeldung
+  // Fehlermeldung
   const [error, setError] = useState('');
 
-  // 7) Guard für onProcessed / onConfirm
+  // Guard für onProcessed / onConfirm
   const hasProcessedRef = useRef(false);
-
-  // -------------------------------------
+  
   // Kamera starten/stoppen
-  // -------------------------------------
   useEffect(() => {
     let stream;
     if (mode === 'preview') {
@@ -64,9 +62,7 @@ export default function CameraCapture({ onSuccess, onCancel }) {
     };
   }, [mode]);
 
-  // -------------------------------------
   // Foto aufnehmen → in `auto`-Modus
-  // -------------------------------------
   const capture = () => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) {
@@ -83,14 +79,12 @@ export default function CameraCapture({ onSuccess, onCancel }) {
       const url = URL.createObjectURL(blob);
       setImgSrc(url);
       setMode('auto');
-      hasProcessedRef.current = false; // Guard zurücksetzen
+      hasProcessedRef.current = false;
       setError('');
     }, 'image/jpeg');
   };
 
-  // -------------------------------------
   // Auto-Kantenerkennung erfolgreich → `previewProcessed`
-  // -------------------------------------
   const handleAutoSuccess = blob => {
     if (hasProcessedRef.current) return;
     hasProcessedRef.current = true;
@@ -102,9 +96,7 @@ export default function CameraCapture({ onSuccess, onCancel }) {
     setMode('previewProcessed');
   };
 
-  // -------------------------------------
-  // „✏️ Manuell anpassen“ aus Vorschau → `manual`
-  // -------------------------------------
+  // „✏️ Manuell Kanten anpassen“ aus Vorschau → `manual`
   const startManualAfterAuto = () => {
     setError('');
     const img = new Image();
@@ -123,15 +115,13 @@ setInitialCorners([
     img.src = imgSrc;
   };
 
-  // -------------------------------------
+
   // „➕ Dieses Foto zur Sammlung hinzufügen“
-  // -------------------------------------
   const handleAddToPhotos = () => {
     if (!processedBlob || !processedBlobURL) return;
 
     setPhotos(prev => [...prev, { blob: processedBlob, url: processedBlobURL }]);
 
-    // Aufräumen und zurück in `preview`
     setImgSrc('');
     setProcessedBlob(null);
     setProcessedBlobURL('');
@@ -140,9 +130,7 @@ setInitialCorners([
     setMode('preview');
   };
 
-  // -------------------------------------
   // Einzelnes Foto aus der Galerie entfernen
-  // -------------------------------------
   const removePhotoAt = idx => {
     setPhotos(prev => {
       URL.revokeObjectURL(prev[idx].url);
@@ -150,9 +138,7 @@ setInitialCorners([
     });
   };
 
-  // -------------------------------------
   // „✅ Fertig (Fotos hochladen)“ → Upload aller + navigate to /review
-  // -------------------------------------
   const handleUploadAllAndProceed = async () => {
     if (photos.length === 0) {
       setError('Mindestens eine Seite muss aufgenommen werden.');
@@ -197,9 +183,7 @@ setInitialCorners([
     }
   };
 
-  // -------------------------------------
-  // „↺ Neu scannen / Manueller Modus“ oder Abbruch → alles zurücksetzen
-  // -------------------------------------
+  // „↺ Neu scannen“ oder Abbruch → alles zurücksetzen
   const handleRetakeOrManual = () => {
     URL.revokeObjectURL(imgSrc);
     URL.revokeObjectURL(processedBlobURL);
@@ -212,13 +196,9 @@ setInitialCorners([
     setError('');
   };
 
-  // -------------------------------------
   // Rendering je nach mode
-  // -------------------------------------
   switch (mode) {
-    // ---------------------------------------------------
-    // 1) Live‐Kamera (preview)
-    // ---------------------------------------------------
+    // Live‐Kamera (preview)
     case 'preview':
       return (
         <div className="bg-white shadow rounded-lg p-6 w-full">
@@ -277,9 +257,7 @@ setInitialCorners([
         </div>
       );
 
-    // ---------------------------------------------------
-    // 2) Automatische Kantenerkennung (auto)
-    // ---------------------------------------------------
+    // Automatische Kantenerkennung (auto)
     case 'auto':
       return (
         <div className="bg-white shadow rounded-lg p-6 w-full">
@@ -305,9 +283,7 @@ setInitialCorners([
         </div>
       );
 
-    // ---------------------------------------------------
-    // 3) Vorschau des zugeschnittenen Fotos (previewProcessed)
-    // ---------------------------------------------------
+    // Vorschau des zugeschnittenen Fotos (previewProcessed)
     case 'previewProcessed':
       return (
         <div className="bg-white shadow rounded-lg p-6 w-full">
@@ -334,9 +310,7 @@ setInitialCorners([
         </div>
       );
 
-    // ---------------------------------------------------
-    // 4) Manueller Zuschnitt (manual)
-    // ---------------------------------------------------
+    // Manueller Zuschnitt (manual)
     case 'manual':
       return (
         <div className="bg-white shadow rounded-lg p-6 w-full">
@@ -362,9 +336,7 @@ setInitialCorners([
         </div>
       );
 
-    // ---------------------------------------------------
-    // 5) Hochladen aller Fotos (uploadingAll)
-    // ---------------------------------------------------
+    // Hochladen aller Fotos (uploadingAll)
     case 'uploadingAll':
       return (
         <div className="bg-white shadow rounded-lg p-6 w-full">
@@ -373,10 +345,7 @@ setInitialCorners([
           </p>
         </div>
       );
-
-    // ---------------------------------------------------
-    // 6) Fallback (tritt hoffentlich nie ein)
-    // ---------------------------------------------------
+    // Fallback (tritt hoffentlich nie ein)
     default:
       return null;
   }
