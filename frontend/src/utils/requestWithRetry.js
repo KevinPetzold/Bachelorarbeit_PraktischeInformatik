@@ -15,7 +15,7 @@
  * @throws {Error} - wenn nach allen Versuchen noch ein Fehler steht
  */
 export async function requestWithRetry(url, options = {}, retries = 3, backoff = 500) {
-  // 1) Clone options, um Header hinzuzufügen, ohne das Original zu modifizieren
+  // Clone options, um Header hinzuzufügen, ohne das Original zu modifizieren
   const opts = {
     ...options,
     headers: {
@@ -23,20 +23,17 @@ export async function requestWithRetry(url, options = {}, retries = 3, backoff =
     },
   };
 
-  // 2) Wenn im localStorage ein JWT unter "token" liegt, hänge ihn an
+  // Wenn im localStorage ein JWT unter "token" liegt, hänge ihn an
   const storedToken = localStorage.getItem('token');
   if (storedToken) {
     opts.headers.Authorization = `Bearer ${storedToken}`;
-    // Hinweis: Falls du Cookies statt Header-Tokens einsetzt, könntest du hier
-    // opts.credentials = 'include' setzen. In diesem Projekt verwenden wir jedoch
-    // JWT im Bearer-Header.
   }
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const response = await fetch(url, opts);
 
-      // Wenn HTTP-Status ein echter Server-Error (5xx) ist, wollen wir retryen
+      // Wenn HTTP-Status ein echter Server-Error (5xx) ist, retry
       if (response.status >= 500 && response.status < 600) {
         throw new Error(`Server-Error ${response.status}`);
       }
@@ -50,7 +47,6 @@ export async function requestWithRetry(url, options = {}, retries = 3, backoff =
       }
       // Sonst: exponential Backoff, dann neuer Versuch
       await new Promise((res) => setTimeout(res, backoff * Math.pow(2, attempt - 1)));
-      // und schleife fort
     }
   }
 }
