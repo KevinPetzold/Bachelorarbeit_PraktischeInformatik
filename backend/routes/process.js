@@ -25,21 +25,16 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // performOCR() fängt interne Fehler bereits ab und liefert '' zurück, wenn's schiefgeht.
     const text = await retry(() => performOCR(filePath));
-    
-    // Wir können optional einen Hinweis mitliefern, wenn text leer ist.
+
     if (!text) {
       return res.json({
         text: '',
         warning: 'OCR hat zu keinem Ergebnis geführt (möglicherweise unscharf oder fehlende Trainingsdaten).'
       });
     }
-    // Normales 200-OK mit erkann­tem Text
     return res.json({ text });
   } catch (e) {
-    // Diese catch-Sektion sollte jetzt nur noch greifen, wenn retry() wirklich
-    // selbst aus anderen Gründen abbricht (z.B. Netzwerkprobleme).
     return res.json({
       text: '',
       warning: 'OCR vor Ort nicht ausführbar: ' + e.message
@@ -59,19 +54,11 @@ async function performOCR(filePath) {
       imagePath,
       'deu',
       {
-        // Hinweis: Achte darauf, dass `tessdata`-Ordner mit den .traineddata-Dateien existiert.
-        // Wenn nicht, kann man hier auch `langPath` weglassen, sodass Tesseract die Daten
-        // automatisch aus dem CDN lädt (langs werden dann heruntergeladen).
-        // Z. B.:
-        // langPath:  tessdataPath,
-        // cachePath: tessdataPath,
-        // gzip:      false,
       }
     );
     return text || '';
   } catch (err) {
     console.error('❌ performOCR Error:', err);
-    // Gib zumindest einen leeren String zurück, damit die Route nicht auf 500 fällt.
     return '';
   }
 }
