@@ -31,7 +31,6 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: 'Email & Passwort erforderlich.' });
     }
     const { token, user } = await loginUser({ email, password });
-    // Im Frontend speichern wir das Token (z. B. im Memory oder LocalStorage)
     res.status(200).json({ token, user });
   } catch (err) {
     return res.status(401).json({ error: err.message });
@@ -39,8 +38,7 @@ router.post('/login', async (req, res, next) => {
 });
 
 // POST /api/auth/logout
-// Hier reicht es aus, der Client löscht das JWT – wir können optional serverseitig ein Blacklist-System implementieren.
-// Für den MVP senden wir einfach eine 200-Antwort.
+// Hier reicht es aus, der Client löscht das JWT, für das PoC wird einfach eine 200-Antwort gesendet.
 router.post('/logout', (req, res) => {
   res.status(200).json({ message: 'Abgemeldet.' });
 });
