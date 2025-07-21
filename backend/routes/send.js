@@ -11,7 +11,7 @@ const router = express.Router();
 router.post('/', async (req, res) => {
   const { images, texts } = req.body;
 
-  // 1) Validierung
+  // Validierung
   if (
     !Array.isArray(images) || images.length === 0 ||
     !Array.isArray(texts)  || texts.length !== images.length
@@ -19,16 +19,15 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid data.' });
   }
 
-  // 2) userId und budgetId aus req.user
+  // userId und budgetId aus req.user
   const userId = req.user.sub;
-  // Wir gehen davon aus, dass beim Anlegen des Users in der DB ein Feld budgetId gesetzt wurde.
   const budgetId = req.user.budgetId;
   if (!budgetId) {
     return res.status(400).json({ error: 'Kein Budget für diesen Nutzer hinterlegt.' });
   }
 
   try {
-    // 3) Fortlaufende Rechnungsnummer anhand budgetId + Jahr holen
+    // Fortlaufende Rechnungsnummer anhand budgetId + Jahr holen
       const year = new Date().getFullYear().toString();
       const key = `${budgetId}-${year}`;
     
@@ -48,7 +47,7 @@ router.post('/', async (req, res) => {
        
     const invoiceNumber = `${year}-${suffix}`;
     const calendarYear  = new Date().getFullYear();
-    // 4) PDF erstellen (mit Metadaten)
+    // PDF erstellen (mit Metadaten)
     const pdfRelPath = await generatePDF({
       images,
       texts,
@@ -61,7 +60,7 @@ router.post('/', async (req, res) => {
     });
 
 
-  // === TEMP-Dateien nach PDF-Erstellung löschen ===
+  // temporäre Dateien nach PDF-Erstellung löschen
     for (const filePath of images) {
       if (filePath.startsWith('uploads/')) {
         try {
