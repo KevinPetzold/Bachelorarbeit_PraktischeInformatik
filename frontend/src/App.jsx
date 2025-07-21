@@ -11,7 +11,7 @@ import Send from './pages/Send';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import CookieBanner from './components/CookieBanner';
 import './App.css';
-import './index.css'; // Tailwind, etc.
+import './index.css';
 
 
 
