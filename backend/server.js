@@ -21,14 +21,14 @@ const __dirname  = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 1) CORS für alle API-Routen
+// CORS für alle API-Routen
 app.use(cors({
     origin: 'http://localhost:3000',
     credentials: true,
   })
 );
 
-// 2) Helmet mit neuem Resource-Policy-Header
+// Helmet mit neuem Resource-Policy-Header
 app.use(
   helmet({
     // verhindert, dass static assets nur same-origin laufen
@@ -40,7 +40,7 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// 3) Statische Ordner, mit explizitem CORS-Header
+// Statische Ordner, mit explizitem CORS-Header
 app.use(
   '/processed',
   // Access-Control-Allow-Origin, falls jemand direkt auf URL greift
@@ -59,16 +59,15 @@ app.use(
 );
 
 
-// 3) Auth-Routen (unprotected)
+// Auth-Routen (unprotected)
 app.use('/api/auth', authRoutes);
 
-// 4) Geschützte Routen – nur mit gültigem JWT
-//    Upload, Process und Send dürfen nur angemeldete Nutzer aufrufen:
+// Geschützte Routen – nur mit gültigem JWT
 app.use('/api/upload', authenticateJWT, uploadRoutes);
 app.use('/api/process', authenticateJWT, processRoutes);
 app.use('/api/send', authenticateJWT, sendRoutes);
 
-// 5) Globaler Error-Handler
+// Globaler Error-Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res
@@ -77,5 +76,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, '0.0.0.0',() => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
