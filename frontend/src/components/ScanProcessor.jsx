@@ -6,13 +6,18 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
   const [busy, setBusy] = useState(true);
   const workerRef = useRef(null);
 
+  // Minimale Höhe für Bilder
   const MIN_WIDTH = 600;
+  // Maximale Höhe für Bilder
   const MIN_HEIGHT = 800;
+  // Laplace-Varianz für Schräfe
   const BLUR_THRESHOLD = 100;
+  // Minimale Helligkeit des Bildes
   const MIN_BRIGHTNESS = 40;
+  // Maximale GHelligkeit für Bilder
   const MAX_BRIGHTNESS = 215;
 
-  // 1) Handler für Nachrichten vom Worker
+  // Handler für Nachrichten vom Worker
   const onWorkerMessage = useCallback(
     (ev) => {
       const { blob, error: errMsg } = ev.data;
@@ -45,7 +50,7 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
     [onError, onProcessed]
   );
 
-  // 2) Handler für Fehler im Worker
+  // Handler für Fehler im Worker
   const onWorkerError = useCallback(
     (ev) => {
       onError('Worker-Fehler: ' + ev.message);
@@ -54,12 +59,12 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
     [onError]
   );
 
-  // 3) useEffect: startet, sobald sich `src` ändert
+  // useEffect: startet, sobald sich `src` ändert
   useEffect(() => {
     if (!src) return;
     setBusy(true);
 
-    // 3.1) Einen neuen Worker erzeugen, falls noch nicht vorhanden
+    // Einen neuen Worker erzeugen, falls noch nicht vorhanden
     if (!workerRef.current) {
       const baseUrl = window.location.origin;
       const code = opencvWorkerCode.replace(
@@ -72,11 +77,11 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
     }
     const worker = workerRef.current;
 
-    // 3.2) Listener hinzufügen
+    // Listener hinzufügen
     worker.addEventListener('message', onWorkerMessage);
     worker.addEventListener('error', onWorkerError);
 
-    // 3.3) Lade das Bild und extrahiere die ImageData
+    // Lade das Bild und extrahiere die ImageData
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -87,7 +92,7 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
       offCtx.drawImage(img, 0, 0);
       const imageData = offCtx.getImageData(0, 0, img.width, img.height);
 
-      // 3.4) Schicke die Daten an den Worker
+      // Schicke die Daten an den Worker
       worker.postMessage({
         imageData,
         width: img.width,
@@ -105,7 +110,7 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
     };
     img.src = src;
 
-    // 3.5) Cleanup: entferne Listener
+    // Cleanup: entferne Listener
     return () => {
       if (workerRef.current) {
         workerRef.current.removeEventListener('message', onWorkerMessage);
@@ -123,7 +128,7 @@ export default function ScanProcessor({ src, onProcessed, onError }) {
 }
 
 // ---------------------------------------------------------------
-// opencvWorkerCode als String (ohne Debug-Logs, aber mit Promise‐Unwrapping)
+// opencvWorkerCode als String 
 // ---------------------------------------------------------------
 const opencvWorkerCode = `
   let cvReadyResolve;
